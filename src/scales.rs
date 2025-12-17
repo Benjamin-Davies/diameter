@@ -1,18 +1,7 @@
-use std::str::FromStr;
-
 use crate::notes::LetterNote;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Scale(LetterNote);
-
-impl FromStr for Scale {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> anyhow::Result<Self> {
-        let tonic = s.parse()?;
-        Ok(Scale(tonic))
-    }
-}
+pub struct Scale(pub LetterNote);
 
 #[cfg(test)]
 mod test {

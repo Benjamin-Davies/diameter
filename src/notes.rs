@@ -1,9 +1,9 @@
-use std::str::FromStr;
+use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct MidiPitch(u8);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LetterNote(pub Letter, pub Accidental);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -104,6 +104,26 @@ impl Letter {
         };
         MidiPitch(pitch + 60)
     }
+
+    pub const fn double_flat(self) -> LetterNote {
+        LetterNote(self, Accidental::DOUBLE_FLAT)
+    }
+
+    pub const fn flat(self) -> LetterNote {
+        LetterNote(self, Accidental::FLAT)
+    }
+
+    pub const fn natural(self) -> LetterNote {
+        LetterNote(self, Accidental::NATURAL)
+    }
+
+    pub const fn sharp(self) -> LetterNote {
+        LetterNote(self, Accidental::SHARP)
+    }
+
+    pub const fn double_sharp(self) -> LetterNote {
+        LetterNote(self, Accidental::DOUBLE_SHARP)
+    }
 }
 
 impl Accidental {
@@ -118,50 +138,36 @@ impl Accidental {
     }
 }
 
-impl FromStr for LetterNote {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> anyhow::Result<Self> {
-        anyhow::ensure!(!s.is_empty(), "Cannot parse empty string as LetterNote");
-        let split_index = s.chars().next().unwrap().len_utf8();
-        let (letter_str, accidental_str) = s.split_at(split_index);
-        let letter = letter_str.parse()?;
-        let accidental = accidental_str.parse()?;
-
-        Ok(LetterNote(letter, accidental))
+impl fmt::Debug for LetterNote {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "LetterNote({self})")
     }
 }
 
-impl FromStr for Letter {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> anyhow::Result<Self> {
-        match s {
-            "C" => Ok(Letter::C),
-            "D" => Ok(Letter::D),
-            "E" => Ok(Letter::E),
-            "F" => Ok(Letter::F),
-            "G" => Ok(Letter::G),
-            "A" => Ok(Letter::A),
-            "B" => Ok(Letter::B),
-            _ => anyhow::bail!("Invalid letter: {s:?}"),
-        }
+impl fmt::Display for LetterNote {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}{}", self.0, self.1)
     }
 }
 
-impl FromStr for Accidental {
-    type Err = anyhow::Error;
+impl fmt::Display for Letter {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
 
-    fn from_str(s: &str) -> anyhow::Result<Self> {
-        let mut accidental = 0;
-        for c in s.chars() {
-            match c {
-                '#' => accidental += 1,
-                'b' => accidental -= 1,
-                _ => anyhow::bail!("Invalid accidental character: {c:?}"),
+impl fmt::Display for Accidental {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.0 < 0 {
+            for _ in 0..-self.0 {
+                write!(f, "b")?;
+            }
+        } else if self.0 > 0 {
+            for _ in 0..self.0 {
+                write!(f, "#")?;
             }
         }
-        Ok(Accidental(accidental))
+        Ok(())
     }
 }
 
@@ -171,11 +177,8 @@ mod test {
 
     use Letter::*;
 
-    const DOUBLE_FLAT: Accidental = Accidental::DOUBLE_FLAT;
     const FLAT: Accidental = Accidental::FLAT;
     const NATURAL: Accidental = Accidental::NATURAL;
-    const SHARP: Accidental = Accidental::SHARP;
-    const DOUBLE_SHARP: Accidental = Accidental::DOUBLE_SHARP;
 
     #[test]
     fn test_midi_pitch_as_letter() {
@@ -189,20 +192,5 @@ mod test {
         assert_eq!(LetterNote(C, NATURAL).as_midi(), MidiPitch(60));
         assert_eq!(LetterNote(E, NATURAL).as_midi(), MidiPitch(64));
         assert_eq!(LetterNote(B, FLAT).as_midi(), MidiPitch(70));
-    }
-
-    #[test]
-    fn test_parse_letter_note() {
-        assert_eq!("C".parse::<LetterNote>().unwrap(), LetterNote(C, NATURAL));
-        assert_eq!("D#".parse::<LetterNote>().unwrap(), LetterNote(D, SHARP));
-        assert_eq!(
-            "Ebb".parse::<LetterNote>().unwrap(),
-            LetterNote(E, DOUBLE_FLAT)
-        );
-        assert_eq!(
-            "F##".parse::<LetterNote>().unwrap(),
-            LetterNote(F, DOUBLE_SHARP)
-        );
-        assert_eq!("Db".parse::<LetterNote>().unwrap(), LetterNote(D, FLAT));
     }
 }
