@@ -1,15 +1,15 @@
 use std::str::FromStr;
 
 use nom::{
-    AsChar, IResult, Parser,
+    IResult, Parser,
     branch::alt,
-    bytes::complete::{tag, take_until, take_while1},
-    character::{
-        complete::one_of,
-        streaming::{alphanumeric0, line_ending},
+    bytes::{
+        complete::{tag, take_until, take_while1},
+        take_while,
     },
+    character::complete::{alphanumeric0, line_ending, one_of, space0, space1},
     combinator::{complete, eof, opt, success},
-    multi::{many_till, many0},
+    multi::{many_till, many0, separated_list1},
 };
 
 use crate::{
@@ -24,21 +24,24 @@ type Error<'input> = nom::error::Error<&'input str>;
 type OwnedError = nom::Err<nom::error::Error<String>>;
 
 pub fn chart(input: &str) -> IResult<&str, Chart> {
-    many_till((line, line_ending).map(|(line, _)| line), eof)
+    many_till((line, opt(line_ending)).map(|(line, _)| line), eof)
         .map(|(lines, _)| Chart { lines })
         .parse(input)
 }
 
 pub fn line(input: &str) -> IResult<&str, Line> {
-    let res = alt((
+    alt((
         directive.map(Line::Directive),
+        chords_over_lyrics_content.map(|chunks| Line::Content {
+            chunks,
+            inline: false,
+        }),
         inline_content.map(|chunks| Line::Content {
             chunks,
             inline: true,
         }),
     ))
-    .parse(input);
-    res
+    .parse(input)
 }
 
 pub fn directive(input: &str) -> IResult<&str, Directive> {
@@ -62,6 +65,46 @@ pub fn directive(input: &str) -> IResult<&str, Directive> {
             Directive::Other(content.to_owned())
         })
         .parse(input)
+        .map_err(|e| dbg!(e))
+}
+
+pub fn chords_over_lyrics_content<'a>(input: &'a str) -> IResult<&'a str, Vec<Chunk>> {
+    let start_len = input.len();
+    (
+        space0,
+        separated_list1(space1, |input: &'a str| {
+            let index = start_len - input.len();
+            alt((boxed_chord, chord))
+                .map(|chord| (index, chord))
+                .parse(input)
+        }),
+        space0,
+        line_ending,
+        take_while(|c| c != '\r' && c != '\n' && c != '\0'),
+    )
+        .map(|(_, chords, _, _, lyrics)| {
+            let mut chunks = Vec::new();
+            if chords[0].0 != 0 {
+                let index = chords[0].0.min(lyrics.len());
+                chunks.push(Chunk {
+                    chord: None,
+                    lyrics: lyrics[..index].to_owned(),
+                });
+            }
+            for (i, (start_index, chord)) in chords.iter().enumerate() {
+                let start_index = (*start_index).min(lyrics.len());
+                let end_index = chords
+                    .get(i + 1)
+                    .map_or(usize::MAX, |&(next_index, _)| next_index)
+                    .min(lyrics.len());
+                chunks.push(Chunk {
+                    chord: Some(chord.clone()),
+                    lyrics: lyrics[start_index..end_index].to_owned(),
+                });
+            }
+            chunks
+        })
+        .parse(input)
 }
 
 pub fn inline_content(input: &str) -> IResult<&str, Vec<Chunk>> {
@@ -71,7 +114,7 @@ pub fn inline_content(input: &str) -> IResult<&str, Vec<Chunk>> {
 pub fn chunk(input: &str) -> IResult<&str, Chunk> {
     (
         opt(boxed_chord),
-        take_while1(|c: char| c != '[' && !c.is_newline()),
+        take_while1(|c: char| c != '[' && c != '\r' && c != '\n' && c != '\0'),
     )
         .map(|(chord, lyrics)| Chunk {
             chord,
@@ -188,9 +231,10 @@ mod tests {
 
     const HOW_GREAT_THOU_ART: &str =
         include_str!("../examples/How-Great-Thou-Art-(Whakaaria-Mai).chordpro");
+    const O_HOLY_NIGHT: &str = include_str!("../examples/O-Holy-Night-.chordpro");
 
     #[test]
-    fn test_parse_score() {
+    fn test_parse_inline_chart() {
         let chart = chart.parse(HOW_GREAT_THOU_ART).unwrap().1;
 
         assert_eq!(chart.lines.len(), 34);
@@ -247,6 +291,75 @@ mod tests {
                     }
                 ],
                 inline: true
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_over_lyrics_chart() {
+        let chart = chart.parse(O_HOLY_NIGHT).unwrap().1;
+
+        assert_eq!(chart.lines.len(), 57);
+        assert_eq!(
+            chart.lines[0],
+            Line::Directive(Directive::Title("O Holy Night ".to_owned()))
+        );
+        assert_eq!(
+            chart.lines[9],
+            Line::Content {
+                chunks: vec![Chunk {
+                    chord: None,
+                    lyrics: "Intro".to_owned()
+                }],
+                inline: true
+            }
+        );
+        assert_eq!(
+            chart.lines[10],
+            Line::Content {
+                chunks: vec![
+                    Chunk {
+                        chord: Some(G.natural().major_chord()),
+                        lyrics: " ".to_owned()
+                    },
+                    Chunk {
+                        chord: Some(D.natural().major_chord()),
+                        lyrics: "".to_owned()
+                    },
+                    Chunk {
+                        chord: Some(E.natural().minor_chord()),
+                        lyrics: "".to_owned()
+                    },
+                    Chunk {
+                        chord: Some(C.natural().major_chord()),
+                        lyrics: "".to_owned()
+                    },
+                ],
+                inline: false
+            }
+        );
+        assert_eq!(
+            chart.lines[13],
+            Line::Content {
+                chunks: vec![
+                    Chunk {
+                        chord: Some(G.natural().major_chord()),
+                        lyrics: "O holy ".to_owned()
+                    },
+                    Chunk {
+                        chord: Some(D.natural().major_chord()),
+                        lyrics: "night the ".to_owned()
+                    },
+                    Chunk {
+                        chord: Some(C.natural().major_chord()),
+                        lyrics: "stars are brightly s".to_owned()
+                    },
+                    Chunk {
+                        chord: Some(E.natural().minor_chord()),
+                        lyrics: "hining".to_owned()
+                    },
+                ],
+                inline: false
             }
         );
     }
