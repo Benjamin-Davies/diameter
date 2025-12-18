@@ -8,7 +8,7 @@ use nom::{
         take_while,
     },
     character::complete::{alphanumeric0, line_ending, one_of, space0, space1},
-    combinator::{complete, eof, opt, success},
+    combinator::{eof, opt, success},
     multi::{many_till, many0, separated_list1},
 };
 
@@ -65,7 +65,6 @@ pub fn directive(input: &str) -> IResult<&str, Directive> {
             Directive::Other(content.to_owned())
         })
         .parse(input)
-        .map_err(|e| dbg!(e))
 }
 
 pub fn chords_over_lyrics_content<'a>(input: &'a str) -> IResult<&'a str, Vec<Chunk>> {
@@ -114,7 +113,7 @@ pub fn inline_content(input: &str) -> IResult<&str, Vec<Chunk>> {
 pub fn chunk(input: &str) -> IResult<&str, Chunk> {
     (
         opt(boxed_chord),
-        take_while1(|c: char| c != '[' && c != '\r' && c != '\n' && c != '\0'),
+        take_while1(|c: char| c != '[' && c != '\r' && c != '\n'),
     )
         .map(|(chord, lyrics)| Chunk {
             chord,
@@ -181,10 +180,7 @@ impl FromStr for Chart {
     type Err = OwnedError;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        complete(chart)
-            .parse(input)
-            .map(|(_, c)| c)
-            .map_err(|e| e.to_owned())
+        chart.parse(input).map(|(_, c)| c).map_err(|e| e.to_owned())
     }
 }
 
@@ -192,10 +188,7 @@ impl FromStr for Scale {
     type Err = OwnedError;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        complete(scale)
-            .parse(input)
-            .map(|(_, s)| s)
-            .map_err(|e| e.to_owned())
+        scale.parse(input).map(|(_, s)| s).map_err(|e| e.to_owned())
     }
 }
 
@@ -203,7 +196,7 @@ impl FromStr for LetterNote {
     type Err = OwnedError;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        complete(letter_note)
+        letter_note
             .parse(input)
             .map(|(_, n)| n)
             .map_err(|e| e.to_owned())
