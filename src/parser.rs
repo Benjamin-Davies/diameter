@@ -17,16 +17,16 @@ use crate::{
     scales::{Scale, ScaleDegree},
 };
 
-type Error<'input> = nom::error::Error<&'input str>;
-type OwnedError = nom::Err<nom::error::Error<String>>;
+type Span<'input> = nom_locate::LocatedSpan<&'input str>;
+type Error<'input> = nom::error::Error<Span<'input>>;
 
-pub fn chart(input: &str) -> IResult<&str, Chart> {
+fn chart(input: Span) -> IResult<Span, Chart> {
     many_till((line, opt(line_ending)).map(|(line, _)| line), eof)
         .map(|(lines, _)| Chart { lines })
         .parse(input)
 }
 
-pub fn line(input: &str) -> IResult<&str, Line> {
+fn line(input: Span) -> IResult<Span, Line> {
     alt((
         directive.map(Line::Directive),
         chords_over_lyrics_content.map(|chunks| Line::Content {
@@ -41,7 +41,7 @@ pub fn line(input: &str) -> IResult<&str, Line> {
     .parse(input)
 }
 
-pub fn directive(input: &str) -> IResult<&str, Directive> {
+fn directive(input: Span) -> IResult<Span, Directive> {
     (tag::<_, _, Error>("{"), take_until("}"), tag("}"))
         .map(|(_, content, _)| {
             match content.split_once(':') {
@@ -59,16 +59,16 @@ pub fn directive(input: &str) -> IResult<&str, Directive> {
                 }
                 _ => {}
             };
-            Directive::Other(content.to_owned())
+            Directive::Other((*content).to_owned())
         })
         .parse(input)
 }
 
-pub fn chords_over_lyrics_content<'a>(input: &'a str) -> IResult<&'a str, Vec<Chunk>> {
+fn chords_over_lyrics_content<'a>(input: Span<'a>) -> IResult<Span<'a>, Vec<Chunk>> {
     let start_len = input.len();
     (
         space0,
-        separated_list1(space1, |input: &'a str| {
+        separated_list1(space1, |input: Span<'a>| {
             let index = start_len - input.len();
             alt((boxed_chord, chord))
                 .map(|chord| (index, chord))
@@ -76,9 +76,13 @@ pub fn chords_over_lyrics_content<'a>(input: &'a str) -> IResult<&'a str, Vec<Ch
         }),
         space0,
         alt((
-            eof,
+            eof.map(|_| ""),
             (line_ending, eof).map(|(_, _)| ""),
-            (line_ending, take_while(|c| c != '\r' && c != '\n')).map(|(_, s)| s),
+            (
+                line_ending,
+                take_while::<_, Span, Error>(|c| c != '\r' && c != '\n'),
+            )
+                .map::<_, &str>(|(_, s)| &*s),
         )),
     )
         .map(|(_, chords, _, lyrics)| {
@@ -106,29 +110,29 @@ pub fn chords_over_lyrics_content<'a>(input: &'a str) -> IResult<&'a str, Vec<Ch
         .parse(input)
 }
 
-pub fn inline_content(input: &str) -> IResult<&str, Vec<Chunk>> {
+fn inline_content(input: Span) -> IResult<Span, Vec<Chunk>> {
     many0(chunk).parse(input)
 }
 
-pub fn chunk(input: &str) -> IResult<&str, Chunk> {
+fn chunk(input: Span) -> IResult<Span, Chunk> {
     (
         opt(boxed_chord),
         take_while1(|c: char| c != '[' && c != '\r' && c != '\n'),
     )
         .map(|(chord, lyrics)| Chunk {
             chord,
-            lyrics: lyrics.to_owned(),
+            lyrics: (*lyrics).to_owned(),
         })
         .parse(input)
 }
 
-pub fn boxed_chord(input: &str) -> IResult<&str, Chord> {
+fn boxed_chord(input: Span) -> IResult<Span, Chord> {
     (tag("["), chord, tag("]"))
         .map(|(_, chord, _)| chord)
         .parse(input)
 }
 
-pub fn chord(input: &str) -> IResult<&str, Chord> {
+fn chord(input: Span) -> IResult<Span, Chord> {
     (note, chord_quality, opt((tag("/"), note).map(|(_, b)| b)))
         .map(|(root, quality, bass)| Chord {
             root,
@@ -138,17 +142,17 @@ pub fn chord(input: &str) -> IResult<&str, Chord> {
         .parse(input)
 }
 
-pub fn chord_quality(input: &str) -> IResult<&str, ChordQuality> {
+fn chord_quality(input: Span) -> IResult<Span, ChordQuality> {
     take_while(|c: char| c.is_digit(10) || "Majminsusadd+-".contains(c))
-        .map(|s: &str| ChordQuality(s.to_owned()))
+        .map(|s: Span| ChordQuality((*s).to_owned()))
         .parse(input)
 }
 
-pub fn scale(input: &str) -> IResult<&str, Scale> {
+fn scale(input: Span) -> IResult<Span, Scale> {
     letter_note.map(Scale).parse(input)
 }
 
-pub fn note(input: &str) -> IResult<&str, Note> {
+fn note(input: Span) -> IResult<Span, Note> {
     alt((
         letter_note.map(Note::Letter),
         scale_degree.map(Note::Number),
@@ -156,13 +160,13 @@ pub fn note(input: &str) -> IResult<&str, Note> {
     .parse(input)
 }
 
-pub fn letter_note(input: &str) -> IResult<&str, LetterNote> {
+fn letter_note(input: Span) -> IResult<Span, LetterNote> {
     (letter, accidental)
         .map(|(l, a)| LetterNote(l, a))
         .parse(input)
 }
 
-pub fn letter(input: &str) -> IResult<&str, Letter> {
+fn letter(input: Span) -> IResult<Span, Letter> {
     one_of("CDEFGAB")
         .map(|c| match c {
             'C' => Letter::C,
@@ -177,19 +181,19 @@ pub fn letter(input: &str) -> IResult<&str, Letter> {
         .parse(input)
 }
 
-pub fn scale_degree(input: &str) -> IResult<&str, ScaleDegree> {
+fn scale_degree(input: Span) -> IResult<Span, ScaleDegree> {
     (accidental, bare_scale_degree)
         .map(|(accidental, degree)| ScaleDegree::new(degree, accidental))
         .parse(input)
 }
 
-pub fn bare_scale_degree(input: &str) -> IResult<&str, u8> {
+fn bare_scale_degree(input: Span) -> IResult<Span, u8> {
     one_of("1234567")
         .map(|c| c.to_digit(10).unwrap() as u8)
         .parse(input)
 }
 
-pub fn accidental(input: &str) -> IResult<&str, Accidental> {
+fn accidental(input: Span) -> IResult<Span, Accidental> {
     alt((
         tag("bb").map(|_| Accidental::DOUBLE_FLAT),
         tag("b").map(|_| Accidental::FLAT),
@@ -201,45 +205,50 @@ pub fn accidental(input: &str) -> IResult<&str, Accidental> {
 }
 
 impl FromStr for Chart {
-    type Err = OwnedError;
+    type Err = String;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        chart.parse(input).map(|(_, c)| c).map_err(|e| e.to_owned())
+        chart
+            .parse(Span::new(input))
+            .map(|(_, c)| c)
+            .map_err(|e| e.to_string())
     }
 }
 
 impl FromStr for Scale {
-    type Err = OwnedError;
+    type Err = String;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        scale.parse(input).map(|(_, s)| s).map_err(|e| e.to_owned())
+        scale
+            .parse(Span::new(input))
+            .map(|(_, s)| s)
+            .map_err(|e| e.to_string())
     }
 }
 
 impl FromStr for LetterNote {
-    type Err = OwnedError;
+    type Err = String;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         letter_note
-            .parse(input)
+            .parse(Span::new(input))
             .map(|(_, n)| n)
-            .map_err(|e| e.to_owned())
+            .map_err(|e| e.to_string())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{
-        charts::{Chunk, Line},
+        charts::{Chart, Chunk, Line},
         chords::Chord,
         directives::Directive,
         notes::{Accidental, Letter, LetterNote},
-        parser::{chart, directive},
+        parser::{Span, directive},
         scales::Scale,
     };
 
     use Letter::*;
-    use nom::Parser;
 
     const DOUBLE_FLAT: Accidental = Accidental::DOUBLE_FLAT;
     const FLAT: Accidental = Accidental::FLAT;
@@ -254,7 +263,7 @@ mod tests {
 
     #[test]
     fn test_parse_inline_chart() {
-        let chart = chart.parse(HOW_GREAT_THOU_ART).unwrap().1;
+        let chart = HOW_GREAT_THOU_ART.parse::<Chart>().unwrap();
 
         assert_eq!(chart.lines.len(), 34);
         assert_eq!(
@@ -316,7 +325,7 @@ mod tests {
 
     #[test]
     fn test_parse_over_lyrics_chart() {
-        let chart = chart.parse(O_HOLY_NIGHT).unwrap().1;
+        let chart = O_HOLY_NIGHT.parse::<Chart>().unwrap();
 
         assert_eq!(chart.lines.len(), 55);
         assert_eq!(
@@ -419,7 +428,7 @@ mod tests {
 
     #[test]
     fn test_parse_numbers() {
-        let chart = chart.parse(CHROMATIC_RUN).unwrap().1;
+        let chart = CHROMATIC_RUN.parse::<Chart>().unwrap();
 
         assert_eq!(chart.lines.len(), 5);
         assert_eq!(
@@ -473,7 +482,7 @@ mod tests {
         let directives = HOW_GREAT_THOU_ART
             .lines()
             .take(5)
-            .map(|input| directive(input).unwrap().1)
+            .map(|input| directive(Span::new(input)).unwrap().1)
             .collect::<Vec<_>>();
 
         assert_eq!(
