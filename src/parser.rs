@@ -16,8 +16,8 @@ use crate::{
     charts::{Chart, Chunk, Line},
     chords::{Chord, ChordQuality},
     directives::Directive,
-    notes::{Accidental, Letter, LetterNote},
-    scales::Scale,
+    notes::{Accidental, Letter, LetterNote, Note},
+    scales::{Scale, ScaleDegree},
 };
 
 type Error<'input> = nom::error::Error<&'input str>;
@@ -79,8 +79,9 @@ pub fn chords_over_lyrics_content<'a>(input: &'a str) -> IResult<&'a str, Vec<Ch
         }),
         space0,
         alt((
-            (line_ending, take_while(|c| c != '\r' && c != '\n')).map(|(_, s)| s),
             eof,
+            (line_ending, eof).map(|(_, _)| ""),
+            (line_ending, take_while(|c| c != '\r' && c != '\n')).map(|(_, s)| s),
         )),
     )
         .map(|(_, chords, _, lyrics)| {
@@ -131,8 +132,12 @@ pub fn boxed_chord(input: &str) -> IResult<&str, Chord> {
 }
 
 pub fn chord(input: &str) -> IResult<&str, Chord> {
-    (letter_note, chord_quality)
-        .map(|(note, quality)| Chord(note, quality))
+    (note, chord_quality, opt((tag("/"), note).map(|(_, b)| b)))
+        .map(|(root, quality, bass)| Chord {
+            root,
+            quality,
+            bass,
+        })
         .parse(input)
 }
 
@@ -144,6 +149,14 @@ pub fn chord_quality(input: &str) -> IResult<&str, ChordQuality> {
 
 pub fn scale(input: &str) -> IResult<&str, Scale> {
     letter_note.map(Scale).parse(input)
+}
+
+pub fn note(input: &str) -> IResult<&str, Note> {
+    alt((
+        letter_note.map(Note::Letter),
+        scale_degree.map(Note::Number),
+    ))
+    .parse(input)
 }
 
 pub fn letter_note(input: &str) -> IResult<&str, LetterNote> {
@@ -164,6 +177,18 @@ pub fn letter(input: &str) -> IResult<&str, Letter> {
             'B' => Letter::B,
             _ => unreachable!(),
         })
+        .parse(input)
+}
+
+pub fn scale_degree(input: &str) -> IResult<&str, ScaleDegree> {
+    (accidental, bare_scale_degree)
+        .map(|(accidental, degree)| ScaleDegree::new(degree, accidental))
+        .parse(input)
+}
+
+pub fn bare_scale_degree(input: &str) -> IResult<&str, u8> {
+    one_of("1234567")
+        .map(|c| c.to_digit(10).unwrap() as u8)
         .parse(input)
 }
 
@@ -209,6 +234,7 @@ impl FromStr for LetterNote {
 mod tests {
     use crate::{
         charts::{Chunk, Line},
+        chords::Chord,
         directives::Directive,
         notes::{Accidental, Letter, LetterNote},
         parser::{chart, directive},
@@ -224,6 +250,7 @@ mod tests {
     const SHARP: Accidental = Accidental::SHARP;
     const DOUBLE_SHARP: Accidental = Accidental::DOUBLE_SHARP;
 
+    const CHROMATIC_RUN: &str = include_str!("../examples/Chromatic-Run.chordpro");
     const HOW_GREAT_THOU_ART: &str =
         include_str!("../examples/How-Great-Thou-Art-(Whakaaria-Mai).chordpro");
     const O_HOLY_NIGHT: &str = include_str!("../examples/O-Holy-Night-.chordpro");
@@ -294,7 +321,7 @@ mod tests {
     fn test_parse_over_lyrics_chart() {
         let chart = chart.parse(O_HOLY_NIGHT).unwrap().1;
 
-        assert_eq!(chart.lines.len(), 57);
+        assert_eq!(chart.lines.len(), 55);
         assert_eq!(
             chart.lines[0],
             Line::Directive(Directive::Title("O Holy Night ".to_owned()))
@@ -375,6 +402,57 @@ mod tests {
                     },
                     Chunk {
                         chord: Some(C.natural().major_chord()),
+                        lyrics: "".to_owned()
+                    },
+                ],
+                inline: false
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_numbers() {
+        let chart = chart.parse(CHROMATIC_RUN).unwrap().1;
+
+        assert_eq!(chart.lines.len(), 5);
+        assert_eq!(
+            chart.lines[0],
+            Line::Directive(Directive::Title("Chromatic Run".to_owned()))
+        );
+        assert_eq!(
+            chart.lines[4],
+            Line::Content {
+                chunks: vec![
+                    Chunk {
+                        chord: Some(Chord::major(1)),
+                        lyrics: "".to_owned()
+                    },
+                    Chunk {
+                        chord: Some(Chord::major(1).over(3)),
+                        lyrics: "".to_owned()
+                    },
+                    Chunk {
+                        chord: Some(Chord::major(1).over(4)),
+                        lyrics: "".to_owned()
+                    },
+                    Chunk {
+                        chord: Some(Chord::major(1).over((4, SHARP))),
+                        lyrics: "".to_owned()
+                    },
+                    Chunk {
+                        chord: Some(Chord::major(1).over(5)),
+                        lyrics: "".to_owned()
+                    },
+                    Chunk {
+                        chord: Some(Chord::major(1).over(6)),
+                        lyrics: "".to_owned()
+                    },
+                    Chunk {
+                        chord: Some(Chord::major(1).over((7, FLAT))),
+                        lyrics: "".to_owned()
+                    },
+                    Chunk {
+                        chord: Some(Chord::major(1).over(7)),
                         lyrics: "".to_owned()
                     },
                 ],

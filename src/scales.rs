@@ -1,13 +1,32 @@
 use std::fmt;
 
-use crate::notes::LetterNote;
+use crate::notes::{Accidental, LetterNote};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Scale(pub LetterNote);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ScaleDegree(u8, Accidental);
+
+impl ScaleDegree {
+    pub fn new(degree: u8, accidental: Accidental) -> Self {
+        assert!(
+            1 <= degree && degree <= 7,
+            "Scale degree must be between 1 and 7"
+        );
+        ScaleDegree(degree, accidental)
+    }
+}
+
 impl fmt::Display for Scale {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+impl fmt::Display for ScaleDegree {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}{}", self.1, self.0)
     }
 }
 

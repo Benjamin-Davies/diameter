@@ -1,7 +1,15 @@
 use std::fmt;
 
+use crate::scales::ScaleDegree;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct MidiPitch(u8);
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Note {
+    Letter(LetterNote),
+    Number(ScaleDegree),
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LetterNote(pub Letter, pub Accidental);
@@ -135,6 +143,48 @@ impl Accidental {
 
     pub const fn as_int(self) -> i8 {
         self.0
+    }
+}
+
+impl From<LetterNote> for Note {
+    fn from(note: LetterNote) -> Self {
+        Note::Letter(note)
+    }
+}
+
+impl From<ScaleDegree> for Note {
+    fn from(note: ScaleDegree) -> Self {
+        Note::Number(note)
+    }
+}
+
+impl From<u8> for Note {
+    fn from(degree: u8) -> Self {
+        Note::Number(ScaleDegree::new(degree, Accidental::NATURAL))
+    }
+}
+
+impl From<(u8, Accidental)> for Note {
+    fn from((degree, accidental): (u8, Accidental)) -> Self {
+        Note::Number(ScaleDegree::new(degree, accidental))
+    }
+}
+
+impl fmt::Debug for Note {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Note::Letter(n) => write!(f, "{n:?}"),
+            Note::Number(n) => write!(f, "{n:?}"),
+        }
+    }
+}
+
+impl fmt::Display for Note {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Note::Letter(n) => write!(f, "{n}"),
+            Note::Number(n) => write!(f, "{n}"),
+        }
     }
 }
 

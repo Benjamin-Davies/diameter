@@ -1,20 +1,49 @@
 use std::fmt;
 
-use crate::notes::LetterNote;
+use crate::notes::{LetterNote, Note};
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct Chord(pub LetterNote, pub ChordQuality);
+pub struct Chord {
+    pub root: Note,
+    pub quality: ChordQuality,
+    pub bass: Option<Note>,
+}
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ChordQuality(pub String);
 
+impl Chord {
+    pub fn major(root: impl Into<Note>) -> Chord {
+        Chord {
+            root: root.into(),
+            quality: ChordQuality::default(),
+            bass: None,
+        }
+    }
+
+    pub fn minor(root: impl Into<Note>) -> Chord {
+        Chord {
+            root: root.into(),
+            quality: ChordQuality("m".to_string()),
+            bass: None,
+        }
+    }
+
+    pub fn over(self, bass: impl Into<Note>) -> Chord {
+        Chord {
+            bass: Some(bass.into()),
+            ..self
+        }
+    }
+}
+
 impl LetterNote {
     pub fn major_chord(self) -> Chord {
-        Chord(self, ChordQuality::default())
+        Chord::major(self)
     }
 
     pub fn minor_chord(self) -> Chord {
-        Chord(self, ChordQuality("m".to_string()))
+        Chord::minor(self)
     }
 }
 
@@ -26,7 +55,11 @@ impl fmt::Debug for Chord {
 
 impl fmt::Display for Chord {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}{}", self.0, self.1)
+        write!(f, "{}{}", self.root, self.quality)?;
+        if let Some(bass) = &self.bass {
+            write!(f, "/{bass}")?;
+        }
+        Ok(())
     }
 }
 
