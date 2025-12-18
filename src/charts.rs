@@ -173,3 +173,18 @@ impl fmt::Display for Chunk {
         write!(f, "{}", self.lyrics)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::charts::Chart;
+
+    const O_HOLY_NIGHT: &str = include_str!("../examples/O-Holy-Night-.chordpro");
+    const O_HOLY_NIGHT_BFLAT: &str = include_str!("../examples/O-Holy-Night-Bb.chordpro");
+
+    #[test]
+    fn test_transpose() {
+        let mut chart = O_HOLY_NIGHT.parse::<Chart>().unwrap();
+        chart.transpose_to("Bb".parse().unwrap());
+        assert_eq!(format!("{chart}"), O_HOLY_NIGHT_BFLAT);
+    }
+}
