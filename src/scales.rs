@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::notes::{Accidental, LetterNote};
+use crate::notes::{Accidental, Letter, LetterNote, MidiPitch, Note};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Scale(pub LetterNote);
@@ -15,6 +15,58 @@ impl ScaleDegree {
             "Scale degree must be between 1 and 7"
         );
         ScaleDegree(degree, accidental)
+    }
+
+    pub fn in_key(self, key: Scale) -> LetterNote {
+        let letter = key.0.letter() + (self.0 - 1) as i8;
+        LetterNote(letter, Accidental::NATURAL).add_accidentals_to_match(self.midi_in_key(key))
+    }
+
+    pub fn midi_in_key(self, key: Scale) -> MidiPitch {
+        let delta = match self.0 {
+            1 => 0,
+            2 => 2,
+            3 => 4,
+            4 => 5,
+            5 => 7,
+            6 => 9,
+            7 => 11,
+            _ => unreachable!(),
+        };
+        key.0.as_midi() + delta + self.1.as_int()
+    }
+
+    pub fn add_accidentals_to_match(self, key: Scale, target: MidiPitch) -> Self {
+        let mut delta = (target.as_int() - self.in_key(key).as_midi().as_int()).rem_euclid(12);
+        if delta > 6 {
+            delta -= 12;
+        }
+        Self(self.0, Accidental::new(delta))
+    }
+}
+
+impl Note {
+    pub fn as_scale_degree(self, key: Scale) -> ScaleDegree {
+        match self {
+            Note::Letter(n) => n.as_scale_degree(key),
+            Note::Number(n) => n,
+        }
+    }
+}
+
+impl LetterNote {
+    pub fn as_scale_degree(self, key: Scale) -> ScaleDegree {
+        self.letter()
+            .as_natural_scale_degree(key)
+            .add_accidentals_to_match(key, self.as_midi())
+    }
+}
+
+impl Letter {
+    pub fn as_natural_scale_degree(self, key: Scale) -> ScaleDegree {
+        let key_letter = key.0.letter();
+        let degree = (self.as_int() as i8 - key_letter.as_int() as i8).rem_euclid(7) as u8 + 1;
+        ScaleDegree(degree, Accidental::NATURAL)
     }
 }
 

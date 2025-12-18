@@ -1,6 +1,6 @@
 use std::fmt::{self, Write};
 
-use crate::{chords::Chord, directives::Directive};
+use crate::{chords::Chord, directives::Directive, notes::Note, scales::Scale};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Chart {
@@ -29,10 +29,84 @@ pub struct Chunk {
 }
 
 impl Chart {
+    pub fn title(&self) -> Option<&str> {
+        for line in &self.lines {
+            if let Line::Directive(Directive::Title(title)) = line {
+                return Some(title);
+            }
+        }
+        None
+    }
+
+    pub fn key(&self) -> Option<Scale> {
+        for line in &self.lines {
+            if let &Line::Directive(Directive::Key(key)) = line {
+                return Some(key);
+            }
+        }
+        None
+    }
+
+    pub fn set_key(&mut self, key: Scale) {
+        for line in &mut self.lines {
+            if let Line::Directive(Directive::Key(k)) = line {
+                *k = key;
+                return;
+            }
+        }
+
+        let after_directives = self
+            .lines
+            .iter()
+            .position(|line| !matches!(line, Line::Directive(_)))
+            .unwrap_or(self.lines.len());
+        self.lines
+            .insert(after_directives, Line::Directive(Directive::Key(key)));
+    }
+
     pub fn set_inline(&mut self, inline: bool) {
         for line in &mut self.lines {
             if let Line::Content { inline: i, .. } = line {
                 *i = inline;
+            }
+        }
+    }
+
+    pub fn to_numbers(&mut self) {
+        let key = self
+            .key()
+            .expect("cannot convert to numbered notation without a key");
+        self.transform_all_notes(|note| note.as_scale_degree(key).into());
+    }
+
+    pub fn transpose_to(&mut self, new_key: Scale) {
+        let old_key = self.key().expect("cannot transpose without a key");
+        self.transform_all_notes(|note| note.as_scale_degree(old_key).in_key(new_key).into());
+        self.set_key(new_key);
+    }
+
+    fn transform_all_notes<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&Note) -> Note,
+    {
+        self.transform_all_chords(|chord| Chord {
+            root: f(&chord.root),
+            quality: chord.quality.clone(),
+            bass: chord.bass.as_ref().map(|b| f(b)),
+        });
+    }
+
+    fn transform_all_chords<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&Chord) -> Chord,
+    {
+        for line in &mut self.lines {
+            if let Line::Content { chunks, .. } = line {
+                for chunk in chunks {
+                    if let Some(chord) = &mut chunk.chord {
+                        *chord = f(chord);
+                    }
+                }
             }
         }
     }

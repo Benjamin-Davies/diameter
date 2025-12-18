@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, ops::Add};
 
 use crate::scales::ScaleDegree;
 
@@ -141,6 +141,14 @@ impl Accidental {
     pub const SHARP: Accidental = Accidental(1);
     pub const DOUBLE_SHARP: Accidental = Accidental(2);
 
+    pub fn new(delta: i8) -> Self {
+        assert!(
+            -2 <= delta && delta <= 2,
+            "{delta} is too large to be an accidental"
+        );
+        Self(delta)
+    }
+
     pub const fn as_int(self) -> i8 {
         self.0
     }
@@ -167,6 +175,30 @@ impl From<u8> for Note {
 impl From<(u8, Accidental)> for Note {
     fn from((degree, accidental): (u8, Accidental)) -> Self {
         Note::Number(ScaleDegree::new(degree, accidental))
+    }
+}
+
+impl Add<i8> for MidiPitch {
+    type Output = MidiPitch;
+
+    fn add(self, rhs: i8) -> Self::Output {
+        MidiPitch((self.as_int() + rhs) as u8)
+    }
+}
+
+impl Add<Accidental> for MidiPitch {
+    type Output = MidiPitch;
+
+    fn add(self, rhs: Accidental) -> Self::Output {
+        MidiPitch((self.as_int() + rhs.as_int()) as u8)
+    }
+}
+
+impl Add<i8> for Letter {
+    type Output = Letter;
+
+    fn add(self, rhs: i8) -> Self::Output {
+        Letter::from_int((self.as_int() as i8 + rhs).rem_euclid(7) as u8)
     }
 }
 
