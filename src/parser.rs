@@ -78,10 +78,12 @@ pub fn chords_over_lyrics_content<'a>(input: &'a str) -> IResult<&'a str, Vec<Ch
                 .parse(input)
         }),
         space0,
-        line_ending,
-        take_while(|c| c != '\r' && c != '\n' && c != '\0'),
+        alt((
+            (line_ending, take_while(|c| c != '\r' && c != '\n')).map(|(_, s)| s),
+            eof,
+        )),
     )
-        .map(|(_, chords, _, _, lyrics)| {
+        .map(|(_, chords, _, lyrics)| {
             let mut chunks = Vec::new();
             if chords[0].0 != 0 {
                 let index = chords[0].0.min(lyrics.len());
@@ -350,6 +352,30 @@ mod tests {
                     Chunk {
                         chord: Some(E.natural().minor_chord()),
                         lyrics: "hining".to_owned()
+                    },
+                ],
+                inline: false
+            }
+        );
+        assert_eq!(
+            chart.lines[chart.lines.len() - 1],
+            Line::Content {
+                chunks: vec![
+                    Chunk {
+                        chord: Some(G.natural().major_chord()),
+                        lyrics: "".to_owned()
+                    },
+                    Chunk {
+                        chord: Some(D.natural().major_chord()),
+                        lyrics: "".to_owned()
+                    },
+                    Chunk {
+                        chord: Some(E.natural().minor_chord()),
+                        lyrics: "".to_owned()
+                    },
+                    Chunk {
+                        chord: Some(C.natural().major_chord()),
+                        lyrics: "".to_owned()
                     },
                 ],
                 inline: false
