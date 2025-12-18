@@ -25,14 +25,17 @@ type OwnedError = nom::Err<nom::error::Error<String>>;
 
 pub fn chart(input: &str) -> IResult<&str, Chart> {
     many_till((line, line_ending).map(|(line, _)| line), eof)
-        .map(|(lines, _)| Chart(lines))
+        .map(|(lines, _)| Chart { lines })
         .parse(input)
 }
 
 pub fn line(input: &str) -> IResult<&str, Line> {
     let res = alt((
         directive.map(Line::Directive),
-        many0(chunk).map(Line::Content),
+        inline_content.map(|chunks| Line::Content {
+            chunks,
+            inline: true,
+        }),
     ))
     .parse(input);
     res
@@ -61,12 +64,19 @@ pub fn directive(input: &str) -> IResult<&str, Directive> {
         .parse(input)
 }
 
+pub fn inline_content(input: &str) -> IResult<&str, Vec<Chunk>> {
+    many0(chunk).parse(input)
+}
+
 pub fn chunk(input: &str) -> IResult<&str, Chunk> {
     (
         opt(boxed_chord),
         take_while1(|c: char| c != '[' && !c.is_newline()),
     )
-        .map(|(chord, text)| Chunk(chord, text.to_owned()))
+        .map(|(chord, lyrics)| Chunk {
+            chord,
+            lyrics: lyrics.to_owned(),
+        })
         .parse(input)
 }
 
@@ -124,6 +134,17 @@ pub fn accidental(input: &str) -> IResult<&str, Accidental> {
     .parse(input)
 }
 
+impl FromStr for Chart {
+    type Err = OwnedError;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        complete(chart)
+            .parse(input)
+            .map(|(_, c)| c)
+            .map_err(|e| e.to_owned())
+    }
+}
+
 impl FromStr for Scale {
     type Err = OwnedError;
 
@@ -172,34 +193,61 @@ mod tests {
     fn test_parse_score() {
         let chart = chart.parse(HOW_GREAT_THOU_ART).unwrap().1;
 
-        assert_eq!(chart.0.len(), 34);
+        assert_eq!(chart.lines.len(), 34);
         assert_eq!(
-            chart.0[0],
+            chart.lines[0],
             Line::Directive(Directive::Title(
                 "How Great Thou Art (Whakaaria Mai)".to_owned()
             ))
         );
-        assert_eq!(chart.0[5], Line::Content(vec![]));
         assert_eq!(
-            chart.0[6],
-            Line::Content(vec![Chunk(None, "English:".to_owned())])
+            chart.lines[5],
+            Line::Content {
+                chunks: vec![],
+                inline: true
+            }
         );
         assert_eq!(
-            chart.0[7],
-            Line::Content(vec![
-                Chunk(None, "Then sings my ".to_owned()),
-                Chunk(Some(B.flat().major_chord()), "soul".to_owned())
-            ])
+            chart.lines[6],
+            Line::Content {
+                chunks: vec![Chunk {
+                    chord: None,
+                    lyrics: "English:".to_owned()
+                }],
+                inline: true
+            }
         );
         assert_eq!(
-            chart.0[9],
-            Line::Content(vec![
-                Chunk(
-                    Some(G.natural().minor_chord()),
-                    "How great thou ".to_owned()
-                ),
-                Chunk(Some(F.natural().major_chord()), "art".to_owned())
-            ])
+            chart.lines[7],
+            Line::Content {
+                chunks: vec![
+                    Chunk {
+                        chord: None,
+                        lyrics: "Then sings my ".to_owned()
+                    },
+                    Chunk {
+                        chord: Some(B.flat().major_chord()),
+                        lyrics: "soul".to_owned()
+                    }
+                ],
+                inline: true
+            }
+        );
+        assert_eq!(
+            chart.lines[9],
+            Line::Content {
+                chunks: vec![
+                    Chunk {
+                        chord: Some(G.natural().minor_chord()),
+                        lyrics: "How great thou ".to_owned()
+                    },
+                    Chunk {
+                        chord: Some(F.natural().major_chord()),
+                        lyrics: "art".to_owned()
+                    }
+                ],
+                inline: true
+            }
         );
     }
 

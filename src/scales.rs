@@ -1,7 +1,15 @@
+use std::fmt;
+
 use crate::notes::LetterNote;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Scale(pub LetterNote);
+
+impl fmt::Display for Scale {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 #[cfg(test)]
 mod test {
