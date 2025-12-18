@@ -3,11 +3,8 @@ use std::str::FromStr;
 use nom::{
     IResult, Parser,
     branch::alt,
-    bytes::{
-        complete::{tag, take_until, take_while1},
-        take_while,
-    },
-    character::complete::{alphanumeric0, line_ending, one_of, space0, space1},
+    bytes::complete::{tag, take_until, take_while, take_while1},
+    character::complete::{line_ending, one_of, space0, space1},
     combinator::{eof, opt, success},
     multi::{many_till, many0, separated_list1},
 };
@@ -142,7 +139,7 @@ pub fn chord(input: &str) -> IResult<&str, Chord> {
 }
 
 pub fn chord_quality(input: &str) -> IResult<&str, ChordQuality> {
-    alphanumeric0
+    take_while(|c: char| c.is_digit(10) || "Majminsusadd+-".contains(c))
         .map(|s: &str| ChordQuality(s.to_owned()))
         .parse(input)
 }
@@ -382,6 +379,16 @@ mod tests {
                     },
                 ],
                 inline: false
+            }
+        );
+        assert_eq!(
+            chart.lines[21],
+            Line::Content {
+                chunks: vec![Chunk {
+                    chord: None,
+                    lyrics: "Chorus 1 ".to_owned()
+                }],
+                inline: true
             }
         );
         assert_eq!(
