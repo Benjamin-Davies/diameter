@@ -10,6 +10,10 @@ struct Cli {
     /// The output file (defaults to stdout)
     #[arg(short, long)]
     output: Option<PathBuf>,
+    /// Print the chart as a PDF file
+    #[arg(short, long)]
+    #[cfg(feature = "print")]
+    pdf_output: Option<PathBuf>,
     /// Output chords inline with lyrics
     #[arg(short, long)]
     inline: bool,
@@ -37,9 +41,20 @@ fn main() {
         chart.to_numbers();
     }
 
+    let mut did_output = false;
     if let Some(output) = cli.output {
         fs::write(output, chart.to_string()).expect("unable to write output file");
-    } else {
+        did_output = true;
+    }
+    #[cfg(feature = "print")]
+    if let Some(pdf_output) = cli.pdf_output {
+        chart
+            .print_to_pdf(&pdf_output)
+            .expect("unable to print to PDF");
+        did_output = true;
+    }
+
+    if !did_output {
         print!("{chart}");
     }
 }

@@ -41,6 +41,15 @@ impl Chart {
         None
     }
 
+    pub fn comment(&self) -> Option<&str> {
+        for line in &self.lines {
+            if let Line::Directive(Directive::Comment(comment)) = line {
+                return Some(comment);
+            }
+        }
+        None
+    }
+
     pub fn key(&self) -> Option<Scale> {
         for line in &self.lines {
             if let &Line::Directive(Directive::Key(key)) = line {
