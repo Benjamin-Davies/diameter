@@ -44,14 +44,7 @@ impl Chart {
         }
 
         writeln!(f, r#"#set text(font: "Courier New")"#)?;
-        writeln!(
-            f,
-            r#"
-                #let chord = single-chord.with(
-                    weight: "semibold",
-                )
-            "#
-        )?;
+        writeln!(f, r#"#let chord = single-chord.with(weight: "semibold")"#)?;
 
         for line in &self.lines {
             match line {
@@ -72,5 +65,24 @@ impl Chart {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::chordpro::charts::Chart;
+
+    const HOW_GREAT_THOU_ART: &str =
+        include_str!("../examples/How-Great-Thou-Art-(Whakaaria-Mai).chordpro");
+    const HOW_GREAT_THOU_ART_TYPST: &str = include_str!("../examples/How-Great-Thou-Art.typst");
+
+    #[test]
+    fn test_print_to_typst() {
+        let chart = HOW_GREAT_THOU_ART.parse::<Chart>().unwrap();
+
+        let mut output = Vec::new();
+        chart.print_to_typst(&mut output).unwrap();
+
+        assert_eq!(String::from_utf8(output).unwrap(), HOW_GREAT_THOU_ART_TYPST);
     }
 }

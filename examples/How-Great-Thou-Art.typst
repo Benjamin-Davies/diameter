@@ -1,0 +1,35 @@
+#import "@preview/chordx:0.6.1": single-chord
+#set text(font: "Arial")
+= How Great Thou Art (Whakaaria Mai)
+Arrangement: Female Key (Db)  Male Key (Bb)  -  76bpm
+#set text(font: "Courier New")
+#let chord = single-chord.with(weight: "semibold")
+\
+English:\
+Then sings my #chord[#"soul"][#"Bb "][1]\
+My #chord[#"Savior, God, to "][#"Eb "][1]#chord[#"Thee"][#"Bb "][1]\
+#chord[#"How great thou "][#"Gm "][1]#chord[#"art"][#"F "][1]\
+#chord[#"How great thou "][#"F "][1]#chord[#"art"][#"Bb "][1]\
+#chord[#"Then sings my "][#"F "][1]#chord[#"soul"][#"Bb "][1]\
+My #chord[#"Savior, God, to "][#"Eb "][1]#chord[#"Thee"][#"Bb "][1]\
+#chord[#"How great thou "][#"Gm "][1]#chord[#"art"][#"Cm "][1]\
+How #chord[#"great thou "][#"F "][1]#chord[#"art"][#"Bb "][1]\
+\
+\
+Maori:\
+Whakaaria mai\
+Tou ripeka ki au\
+Tiaho mai\
+Ra roto i te po\
+Hei kona au\
+Titiro atu ai\
+Ora, mate\
+Hei au koe noho ai\
+\
+English Translation of Maori Chorus:\
+Show Your cross to me.\
+Let it shine,\
+There in the darkness.\
+To there I will be looking.\
+In life, in death\
+Let me rest in thee.\
