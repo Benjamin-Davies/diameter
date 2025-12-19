@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::scales::Scale;
+use crate::theory::scales::Scale;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Directive {

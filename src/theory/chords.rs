@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::notes::{LetterNote, Note};
+use crate::theory::notes::{LetterNote, Note};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Chord {

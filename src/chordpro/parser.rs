@@ -10,11 +10,15 @@ use nom::{
 };
 
 use crate::{
-    charts::{Chart, Chunk, Line},
-    chords::{Chord, ChordQuality},
-    directives::Directive,
-    notes::{Accidental, Letter, LetterNote, Note},
-    scales::{Scale, ScaleDegree},
+    chordpro::{
+        charts::{Chart, Chunk, Line},
+        directives::Directive,
+    },
+    theory::{
+        chords::{Chord, ChordQuality},
+        notes::{Accidental, Letter, LetterNote, Note},
+        scales::{Scale, ScaleDegree},
+    },
 };
 
 type Span<'input> = nom_locate::LocatedSpan<&'input str>;
@@ -240,12 +244,16 @@ impl FromStr for LetterNote {
 #[cfg(test)]
 mod tests {
     use crate::{
-        charts::{Chart, Chunk, Line},
-        chords::Chord,
-        directives::Directive,
-        notes::{Accidental, Letter, LetterNote},
-        parser::{Span, directive},
-        scales::Scale,
+        chordpro::{
+            charts::{Chart, Chunk, Line},
+            directives::Directive,
+            parser::{Span, directive},
+        },
+        theory::{
+            chords::Chord,
+            notes::{Accidental, Letter, LetterNote},
+            scales::Scale,
+        },
     };
 
     use Letter::*;
@@ -256,10 +264,10 @@ mod tests {
     const SHARP: Accidental = Accidental::SHARP;
     const DOUBLE_SHARP: Accidental = Accidental::DOUBLE_SHARP;
 
-    const CHROMATIC_RUN: &str = include_str!("../examples/Chromatic-Run.chordpro");
+    const CHROMATIC_RUN: &str = include_str!("../../examples/Chromatic-Run.chordpro");
     const HOW_GREAT_THOU_ART: &str =
-        include_str!("../examples/How-Great-Thou-Art-(Whakaaria-Mai).chordpro");
-    const O_HOLY_NIGHT: &str = include_str!("../examples/O-Holy-Night-.chordpro");
+        include_str!("../../examples/How-Great-Thou-Art-(Whakaaria-Mai).chordpro");
+    const O_HOLY_NIGHT: &str = include_str!("../../examples/O-Holy-Night-.chordpro");
 
     #[test]
     fn test_parse_inline_chart() {

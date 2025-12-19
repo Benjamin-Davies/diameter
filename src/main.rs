@@ -1,7 +1,7 @@
 use std::{fs, path::PathBuf};
 
 use clap::Parser;
-use diameter::{charts::Chart, scales::Scale};
+use diameter::{chordpro::charts::Chart, theory::scales::Scale};
 
 #[derive(Parser)]
 struct Cli {

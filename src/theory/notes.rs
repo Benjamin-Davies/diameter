@@ -1,6 +1,6 @@
 use std::{fmt, ops::Add};
 
-use crate::scales::ScaleDegree;
+use crate::theory::scales::ScaleDegree;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct MidiPitch(u8);
@@ -255,7 +255,7 @@ impl fmt::Display for Accidental {
 
 #[cfg(test)]
 mod test {
-    use crate::notes::{Accidental, Letter, LetterNote, MidiPitch};
+    use crate::theory::notes::{Accidental, Letter, LetterNote, MidiPitch};
 
     use Letter::*;
 

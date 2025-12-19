@@ -1,6 +1,9 @@
 use std::fmt::{self, Write};
 
-use crate::{chords::Chord, directives::Directive, notes::Note, scales::Scale};
+use crate::{
+    chordpro::directives::Directive,
+    theory::{chords::Chord, notes::Note, scales::Scale},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Chart {
@@ -176,10 +179,10 @@ impl fmt::Display for Chunk {
 
 #[cfg(test)]
 mod tests {
-    use crate::charts::Chart;
+    use crate::chordpro::charts::Chart;
 
-    const O_HOLY_NIGHT: &str = include_str!("../examples/O-Holy-Night-.chordpro");
-    const O_HOLY_NIGHT_BFLAT: &str = include_str!("../examples/O-Holy-Night-Bb.chordpro");
+    const O_HOLY_NIGHT: &str = include_str!("../../examples/O-Holy-Night-.chordpro");
+    const O_HOLY_NIGHT_BFLAT: &str = include_str!("../../examples/O-Holy-Night-Bb.chordpro");
 
     #[test]
     fn test_transpose() {

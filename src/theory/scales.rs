@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::notes::{Accidental, Letter, LetterNote, MidiPitch, Note};
+use crate::theory::notes::{Accidental, Letter, LetterNote, MidiPitch, Note};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Scale(pub LetterNote);
@@ -84,7 +84,7 @@ impl fmt::Display for ScaleDegree {
 
 #[cfg(test)]
 mod test {
-    use crate::{
+    use crate::theory::{
         notes::{Accidental, Letter, LetterNote},
         scales::Scale,
     };
