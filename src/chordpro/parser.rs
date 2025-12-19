@@ -118,16 +118,22 @@ fn inline_content(input: Span) -> IResult<Span, Vec<Chunk>> {
     many0(chunk).parse(input)
 }
 
+fn is_lyrics_char(c: char) -> bool {
+    c != '[' && c != '\r' && c != '\n'
+}
+
 fn chunk(input: Span) -> IResult<Span, Chunk> {
-    (
-        opt(boxed_chord),
-        take_while1(|c: char| c != '[' && c != '\r' && c != '\n'),
-    )
-        .map(|(chord, lyrics)| Chunk {
-            chord,
+    alt((
+        (boxed_chord, take_while(is_lyrics_char)).map(|(chord, lyrics)| Chunk {
+            chord: Some(chord),
             lyrics: (*lyrics).to_owned(),
-        })
-        .parse(input)
+        }),
+        (take_while1(is_lyrics_char)).map(|lyrics: Span| Chunk {
+            chord: None,
+            lyrics: (*lyrics).to_owned(),
+        }),
+    ))
+    .parse(input)
 }
 
 fn boxed_chord(input: Span) -> IResult<Span, Chord> {
@@ -268,6 +274,7 @@ mod tests {
     const HOW_GREAT_THOU_ART: &str =
         include_str!("../../examples/How-Great-Thou-Art-(Whakaaria-Mai).chordpro");
     const O_HOLY_NIGHT: &str = include_str!("../../examples/O-Holy-Night-.chordpro");
+    const TRAILING_CHORDS: &str = include_str!("../../examples/Trailing-Chords.chordpro");
 
     #[test]
     fn test_parse_inline_chart() {
@@ -481,6 +488,53 @@ mod tests {
                     },
                 ],
                 inline: false
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_trailing_chords() {
+        let chart = TRAILING_CHORDS.parse::<Chart>().unwrap();
+
+        assert_eq!(chart.lines.len(), 1);
+        assert_eq!(
+            chart.lines[0],
+            Line::Content {
+                chunks: vec![
+                    Chunk {
+                        chord: Some(Chord::major(1)),
+                        lyrics: "Lorem ".to_owned()
+                    },
+                    Chunk {
+                        chord: Some(Chord::minor(2)),
+                        lyrics: "ipsum ".to_owned()
+                    },
+                    Chunk {
+                        chord: Some(Chord::major(1).over(3)),
+                        lyrics: "dolor ".to_owned()
+                    },
+                    Chunk {
+                        chord: Some(Chord::major(4)),
+                        lyrics: "sit ".to_owned()
+                    },
+                    Chunk {
+                        chord: Some(Chord::major(5)),
+                        lyrics: "amet ".to_owned()
+                    },
+                    Chunk {
+                        chord: Some(Chord::minor(6)),
+                        lyrics: " ".to_owned()
+                    },
+                    Chunk {
+                        chord: Some(Chord::major(5).over(7)),
+                        lyrics: "".to_owned()
+                    },
+                    Chunk {
+                        chord: Some(Chord::major(1)),
+                        lyrics: "".to_owned()
+                    }
+                ],
+                inline: true
             }
         );
     }
