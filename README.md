@@ -1,5 +1,5 @@
 # Diameter
-A tool for working with [ChordPro](https://en.wikipedia.org/wiki/ChordPro) files.
+A tool for working with [ChordPro](https://en.wikipedia.org/wiki/ChordPro) files. This tool supports transposing, conversion to and from [numbers](https://en.wikipedia.org/wiki/Nashville_Number_System), and printing to PDF. It can also be used as a Rust library.
 
 It is called Diameter because a diameter is the [longest chord of a circle](https://en.wikipedia.org/wiki/Diameter).
 
