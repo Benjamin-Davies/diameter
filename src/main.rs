@@ -1,7 +1,10 @@
 use std::{fs, path::PathBuf};
 
 use clap::Parser;
-use diameter::{chordpro::charts::Chart, theory::scales::Scale};
+use diameter::{
+    chordpro::{charts::Chart, parser::set_extensions_enabled},
+    theory::scales::Scale,
+};
 
 #[derive(Parser)]
 struct Cli {
@@ -14,9 +17,12 @@ struct Cli {
     #[arg(short, long)]
     #[cfg(feature = "print")]
     pdf_output: Option<PathBuf>,
-    /// Output chords inline with lyrics
-    #[arg(short, long)]
-    inline: bool,
+    /// Enable non-standard extensions when parsing (e.g. "chords above" format)
+    #[arg(short = 'x', long)]
+    extensions: bool,
+    /// Output chords using "chords above" format
+    #[arg(short = 'v', long)]
+    chords_above: bool,
     /// Transpose the song into a different key
     #[arg(short, long)]
     key: Option<Scale>,
@@ -27,13 +33,14 @@ struct Cli {
 
 fn main() {
     let cli = Cli::parse();
+    set_extensions_enabled(cli.extensions);
 
     let input = fs::read_to_string(&cli.input).expect("unable to read input file");
     let mut chart = input
         .parse::<Chart>()
         .expect("unable to parse ChordPro file");
 
-    chart.set_inline(cli.inline);
+    chart.set_inline(!cli.chords_above);
     if let Some(new_key) = cli.key {
         chart.transpose_to(new_key);
     }

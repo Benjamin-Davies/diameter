@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{cell::Cell, str::FromStr};
 
 use nom::{
     IResult, Parser,
@@ -23,6 +23,15 @@ use crate::{
 
 type Span<'input> = nom_locate::LocatedSpan<&'input str>;
 type Error<'input> = nom::error::Error<Span<'input>>;
+
+thread_local! {
+    static EXTENSIONS_ENABLED: Cell<bool> = Cell::new(false);
+}
+
+/// Enables or disables extensions **for the current thread**.
+pub fn set_extensions_enabled(enabled: bool) {
+    EXTENSIONS_ENABLED.with(|cell| cell.set(enabled));
+}
 
 fn chart(input: Span) -> IResult<Span, Chart> {
     many_till((line, opt(line_ending)).map(|(line, _)| line), eof)
@@ -69,6 +78,14 @@ fn directive(input: Span) -> IResult<Span, Directive> {
 }
 
 fn chords_over_lyrics_content<'a>(input: Span<'a>) -> IResult<Span<'a>, Vec<Chunk>> {
+    let extensions_enabled = EXTENSIONS_ENABLED.with(|cell| cell.get());
+    if !extensions_enabled {
+        return Err(nom::Err::Error(Error::new(
+            input,
+            nom::error::ErrorKind::Tag,
+        )));
+    }
+
     let start_len = input.len();
     (
         space0,
@@ -253,7 +270,7 @@ mod tests {
         chordpro::{
             charts::{Chart, Chunk, Line},
             directives::Directive,
-            parser::{Span, directive},
+            parser::{Span, directive, set_extensions_enabled},
         },
         theory::{
             chords::Chord,
@@ -278,6 +295,7 @@ mod tests {
 
     #[test]
     fn test_parse_inline_chart() {
+        set_extensions_enabled(false);
         let chart = HOW_GREAT_THOU_ART.parse::<Chart>().unwrap();
 
         assert_eq!(chart.lines.len(), 34);
@@ -339,7 +357,19 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_inline_chart_extensions_enabled() {
+        set_extensions_enabled(true);
+        let chart = HOW_GREAT_THOU_ART.parse::<Chart>().unwrap();
+
+        set_extensions_enabled(false);
+        let chart_without_extensions = HOW_GREAT_THOU_ART.parse::<Chart>().unwrap();
+
+        assert_eq!(chart, chart_without_extensions);
+    }
+
+    #[test]
     fn test_parse_over_lyrics_chart() {
+        set_extensions_enabled(true);
         let chart = O_HOLY_NIGHT.parse::<Chart>().unwrap();
 
         assert_eq!(chart.lines.len(), 55);
@@ -442,7 +472,16 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_over_lyric_extensions_disabled() {
+        set_extensions_enabled(false);
+        let chart = O_HOLY_NIGHT.parse::<Chart>().unwrap();
+
+        assert_eq!(chart.lines.len(), 72);
+    }
+
+    #[test]
     fn test_parse_numbers() {
+        set_extensions_enabled(true);
         let chart = CHROMATIC_RUN.parse::<Chart>().unwrap();
 
         assert_eq!(chart.lines.len(), 5);
@@ -494,6 +533,7 @@ mod tests {
 
     #[test]
     fn test_parse_trailing_chords() {
+        set_extensions_enabled(true);
         let chart = TRAILING_CHORDS.parse::<Chart>().unwrap();
 
         assert_eq!(chart.lines.len(), 1);
@@ -541,6 +581,7 @@ mod tests {
 
     #[test]
     fn test_parse_directives() {
+        set_extensions_enabled(false);
         let directives = HOW_GREAT_THOU_ART
             .lines()
             .take(5)

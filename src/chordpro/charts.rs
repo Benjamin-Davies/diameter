@@ -188,13 +188,14 @@ impl fmt::Display for Chunk {
 
 #[cfg(test)]
 mod tests {
-    use crate::chordpro::charts::Chart;
+    use crate::chordpro::{charts::Chart, parser::set_extensions_enabled};
 
     const O_HOLY_NIGHT: &str = include_str!("../../examples/O-Holy-Night-.chordpro");
     const O_HOLY_NIGHT_BFLAT: &str = include_str!("../../examples/O-Holy-Night-Bb.chordpro");
 
     #[test]
     fn test_transpose() {
+        set_extensions_enabled(true);
         let mut chart = O_HOLY_NIGHT.parse::<Chart>().unwrap();
         chart.transpose_to("Bb".parse().unwrap());
         assert_eq!(format!("{chart}"), O_HOLY_NIGHT_BFLAT);
