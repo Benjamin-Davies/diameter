@@ -253,6 +253,17 @@ impl FromStr for Scale {
     }
 }
 
+impl FromStr for Chord {
+    type Err = String;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        chord
+            .parse(Span::new(input))
+            .map(|(_, c)| c)
+            .map_err(|e| e.to_string())
+    }
+}
+
 impl FromStr for LetterNote {
     type Err = String;
 
